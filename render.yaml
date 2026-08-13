@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: travel-buddy-chatbot
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+
+    # rootDir sengaja tidak diisi. Kalau diset ke "server", folder client/
+    # tidak ikut ke runtime dan express.static tidak menemukan apa-apa.
+    buildCommand: cd server && npm ci
+    startCommand: node server/index.js
+
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_MAX_OUTPUT_TOKENS
+        value: "4096"
+      - key: MAX_HISTORY_MESSAGES
+        value: "20"
+      # Instance gratis cuma 512MB, jadi batas upload diturunkan dari 20MB.
+      - key: MAX_FILE_MB
+        value: "8"

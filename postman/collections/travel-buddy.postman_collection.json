@@ -1,0 +1,174 @@
+{
+  "info": {
+    "name": "Travel Buddy — Gemini AI Chatbot",
+    "description": "Koleksi pengujian API Travel Buddy.\n\n- Folder \"Chatbot\" = materi Sesi 3 + Final Project (percakapan multi-turn).\n- Folder \"Multimodal\" = materi Sesi 2 (teks, gambar, dokumen, audio).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Diagnostik",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          }
+        },
+        {
+          "name": "Konfigurasi Gaya Bahasa",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/config", "host": ["{{baseUrl}}"], "path": ["api", "config"] }
+          }
+        },
+        {
+          "name": "Daftar Model Tersedia",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/models", "host": ["{{baseUrl}}"], "path": ["api", "models"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chatbot (Sesi 3)",
+      "item": [
+        {
+          "name": "Chat — giliran pertama",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversation\": [\n    { \"role\": \"user\", \"text\": \"Aku mau ke Bali bulan depan, budget 3 juta berdua.\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"] }
+          }
+        },
+        {
+          "name": "Chat — multi-turn (uji memory)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversation\": [\n    { \"role\": \"user\", \"text\": \"Aku mau ke Bali bulan depan, budget 3 juta berdua.\" },\n    { \"role\": \"model\", \"text\": \"Siap! Bali dengan budget 3 juta berdua masih memungkinkan kalau menginap di Kuta atau Canggu.\" },\n    { \"role\": \"user\", \"text\": \"Hari kedua enaknya ke mana? Ingat budget tadi ya.\" }\n  ],\n  \"settings\": {\n    \"style\": \"hemat\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"] }
+          }
+        },
+        {
+          "name": "Chat — atur parameter manual",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversation\": [\n    { \"role\": \"user\", \"text\": \"Beri ide nama untuk vlog perjalanan keliling Indonesia.\" }\n  ],\n  \"settings\": {\n    \"style\": \"santai\",\n    \"temperature\": 1.6,\n    \"topP\": 0.98,\n    \"topK\": 40\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"] }
+          }
+        },
+        {
+          "name": "Chat — dengan lampiran",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "conversation",
+                  "type": "text",
+                  "value": "[{\"role\":\"user\",\"text\":\"Menurutmu budget di itinerary ini realistis?\"}]"
+                },
+                { "key": "settings", "type": "text", "value": "{\"style\":\"hemat\"}" },
+                { "key": "attachment", "type": "file", "src": [], "description": "gambar / .pdf / .txt / audio" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"] }
+          }
+        },
+        {
+          "name": "Chat — streaming (SSE)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversation\": [\n    { \"role\": \"user\", \"text\": \"Sebutkan 3 pantai terbaik di Lombok.\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/chat/stream", "host": ["{{baseUrl}}"], "path": ["api", "chat", "stream"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Multimodal (Sesi 2)",
+      "item": [
+        {
+          "name": "1. Generate Text",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Buatkan itinerary 3 hari di Yogyakarta dengan budget 1,5 juta rupiah.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/generate-text", "host": ["{{baseUrl}}"], "path": ["generate-text"] }
+          }
+        },
+        {
+          "name": "2. Generate From Image",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image", "type": "file", "src": [], "description": ".png / .jpg" },
+                { "key": "prompt", "type": "text", "value": "Ini foto tempat apa? Berikan tips wisatanya." }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/generate-from-image", "host": ["{{baseUrl}}"], "path": ["generate-from-image"] }
+          }
+        },
+        {
+          "name": "3. Generate From Document",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "document", "type": "file", "src": [], "description": ".pdf / .txt" },
+                { "key": "prompt", "type": "text", "value": "Ringkas dokumen ini dalam poin-poin penting." }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/generate-from-document", "host": ["{{baseUrl}}"], "path": ["generate-from-document"] }
+          }
+        },
+        {
+          "name": "4. Generate From Audio",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "audio", "type": "file", "src": [], "description": ".mp3 / .wav" },
+                { "key": "prompt", "type": "text", "value": "Transkrip audio ini lalu ringkas isinya." }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/generate-from-audio", "host": ["{{baseUrl}}"], "path": ["generate-from-audio"] }
+          }
+        }
+      ]
+    }
+  ]
+}
