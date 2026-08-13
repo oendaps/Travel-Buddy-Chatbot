@@ -1,0 +1,11 @@
+# Tema gelap mengikuti versi web-nya: navy pekat dengan aksen ungu.
+[theme]
+base = "dark"
+primaryColor = "#8B6DFF"
+backgroundColor = "#080A14"
+secondaryBackgroundColor = "#131829"
+textColor = "#F0F2FA"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

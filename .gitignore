@@ -18,3 +18,9 @@ Thumbs.db
 # workspace lokal Postman
 .postman/
 postman/globals/
+
+# Python / Streamlit
+__pycache__/
+*.pyc
+.venv/
+.streamlit/secrets.toml

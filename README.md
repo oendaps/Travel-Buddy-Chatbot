@@ -34,7 +34,27 @@ ikut dibaca model.
   pengunjung memasukkan key sendiri lewat UI dan key itu hanya tersimpan di
   browser mereka.
 
-## Menjalankan
+## Dua versi
+
+Repo ini berisi dua aplikasi dengan persona dan aturan model yang sama:
+
+- **Express + vanilla JS** (`client/` dan `server/`) — versi utama, UI dashboard
+  dengan streaming, lampiran multimodal, dan panel parameter.
+- **Streamlit** (`streamlit_app.py`) — versi Python untuk deploy cepat ke
+  Streamlit Community Cloud.
+
+## Menjalankan versi Streamlit
+
+```bash
+pip install -r requirements.txt
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+streamlit run streamlit_app.py
+```
+
+Isi `GEMINI_API_KEY` di `.streamlit/secrets.toml`. Kalau dibiarkan kosong,
+aplikasi meminta API key lewat sidebar.
+
+## Menjalankan versi Express
 
 Butuh Node.js 18 ke atas.
 
@@ -95,13 +115,15 @@ Koleksi Postman ada di `postman/collections/`.
 ## Struktur
 
 ```
-client/          frontend statis, dilayani Express di /
+client/            frontend statis, dilayani Express di /
 server/
-  index.js       route dan middleware
-  lib/gemini.js  client AI, fallback model, generate + stream
-  lib/persona.js system instruction dan preset parameter
-  lib/files.js   resolusi MIME dan konversi Base64
-  scripts/       diagnostik API key
+  index.js         route dan middleware
+  lib/gemini.js    client AI, fallback model, generate + stream
+  lib/persona.js   system instruction dan preset parameter
+  lib/files.js     resolusi MIME dan konversi Base64
+  scripts/         diagnostik API key
+streamlit_app.py   UI versi Streamlit
+buddy_core.py      persona dan pemanggilan Gemini versi Python
 ```
 
 ## Catatan teknis
