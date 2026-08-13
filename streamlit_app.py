@@ -23,11 +23,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+MENU = ["Percakapan", "Uji Multimodal", "Tentang"]
+
 CONTOH = {
     "Itinerary Yogyakarta 3 hari": "Buatkan itinerary 3 hari di Yogyakarta dengan budget 1,5 juta.",
     "Bali vs Lombok": "Bandingkan Bali dan Lombok untuk honeymoon 5 hari.",
     "Pertama kali ke Jepang": "Apa saja yang perlu disiapkan untuk pertama kali ke Jepang saat musim semi?",
     "Kuliner malam Bandung": "Rekomendasi kuliner malam murah di Bandung beserta perkiraan harganya.",
+}
+
+MODE_UJI = {
+    "Teks": ("Rekomendasi liburan 3 hari di Bali dengan budget 2 juta", None),
+    "Gambar": ("Deskripsikan gambar ini dan berikan tips wisatanya", ["png", "jpg", "jpeg", "webp", "gif"]),
+    "Dokumen": ("Ringkas dokumen ini dalam poin-poin penting", ["pdf", "txt", "md", "csv"]),
+    "Audio": ("Transkrip audio ini lalu ringkas isinya", ["mp3", "wav", "m4a", "ogg"]),
 }
 
 MIME_EKSTENSI = {
@@ -103,6 +112,8 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    menu = st.radio("Menu", MENU, label_visibility="collapsed", key="menu")
+
     key_bawaan = api_key_tersimpan()
 
     with st.expander("Pengaturan", expanded=not key_bawaan):
@@ -117,12 +128,7 @@ with st.sidebar:
                 help="Gratis di https://aistudio.google.com → Get API Key",
             )
 
-        model_awal = st.selectbox(
-            "Model Gemini",
-            MODEL_KANDIDAT,
-            index=0,
-            help="Kalau kuota model ini habis, aplikasi otomatis pindah ke kandidat berikutnya.",
-        )
+        model_awal = st.selectbox("Model Gemini", MODEL_KANDIDAT, index=0)
 
     lampiran = st.file_uploader("Lampiran", type=TIPE_DITERIMA, label_visibility="collapsed")
     st.caption("Foto tempat, dokumen rencana, atau rekaman suara. Ikut dibaca model.")
@@ -134,25 +140,19 @@ with st.sidebar:
     # Diisi belakangan: model aktif baru diketahui setelah client dibuat.
     slot_model = st.empty()
 
-if not api_key:
-    st.markdown(ui.HERO, unsafe_allow_html=True)
-    st.info(
-        "Masukkan **Google AI API Key** di sidebar untuk mulai mengobrol. "
-        "Key gratis bisa diambil di [aistudio.google.com](https://aistudio.google.com) → **Get API Key**.",
-        icon="🔑",
-    )
-    st.stop()
-
-# Client dibuat ulang hanya kalau key atau model awalnya berubah.
-sidik = (api_key, model_awal)
-if st.session_state.sidik != sidik:
-    st.session_state.buddy = Buddy(api_key, model_awal)
-    st.session_state.sidik = sidik
-
-buddy: Buddy = st.session_state.buddy
+# Client cuma dibuat kalau key-nya ada. Tanpa key aplikasi tetap tampil utuh,
+# hanya kotak kirimnya yang dimatikan.
+buddy: Buddy | None = None
+if api_key:
+    sidik = (api_key, model_awal)
+    if st.session_state.sidik != sidik:
+        st.session_state.buddy = Buddy(api_key, model_awal)
+        st.session_state.sidik = sidik
+    buddy = st.session_state.buddy
 
 slot_model.markdown(
-    f'<p class="tb-chip"><span class="tb-dot"></span>{buddy.model_aktif}</p>',
+    f'<p class="tb-chip"><span class="tb-dot{"" if buddy else " tb-dot-off"}"></span>'
+    f'{buddy.model_aktif if buddy else "API key belum diisi"}</p>',
     unsafe_allow_html=True,
 )
 
@@ -186,38 +186,98 @@ with kolom_rail:
     )
 
 with kolom_chat:
-    if not riwayat:
-        st.markdown(ui.HERO, unsafe_allow_html=True)
+    if menu == "Percakapan":
+        if not riwayat:
+            st.markdown(ui.HERO, unsafe_allow_html=True)
 
-        tombol = st.columns(2)
-        for i, judul in enumerate(CONTOH):
-            if tombol[i % 2].button(judul, use_container_width=True, key=f"contoh-{i}"):
-                st.session_state.antre = CONTOH[judul]
-                st.rerun()
+            tombol = st.columns(2)
+            for i, judul in enumerate(CONTOH):
+                if tombol[i % 2].button(judul, use_container_width=True, key=f"contoh-{i}", disabled=not buddy):
+                    st.session_state.antre = CONTOH[judul]
+                    st.rerun()
 
-    for pesan in riwayat:
-        peran = "user" if pesan["peran"] == "user" else "assistant"
-        with st.chat_message(peran, avatar=None if peran == "user" else "🧭"):
-            # Penanda tersembunyi ini yang dipakai CSS untuk membedakan gelembung
-            # user dan bot, karena Streamlit tidak menandai perannya di DOM.
-            st.markdown(f'<span class="tb-{"user" if peran == "user" else "bot"}"></span>', unsafe_allow_html=True)
-            st.markdown(pesan["teks"])
-            if pesan.get("berkas"):
-                st.caption(f"📎 {pesan['berkas']}")
-            if pesan.get("model"):
-                st.caption(f"model: {pesan['model']}")
+        for pesan in riwayat:
+            peran = "user" if pesan["peran"] == "user" else "assistant"
+            with st.chat_message(peran, avatar=None if peran == "user" else "🧭"):
+                # Penanda tersembunyi ini yang dipakai CSS untuk membedakan gelembung
+                # user dan bot, karena Streamlit tidak menandai perannya di DOM.
+                st.markdown(f'<span class="tb-{"user" if peran == "user" else "bot"}"></span>', unsafe_allow_html=True)
+                st.markdown(pesan["teks"])
+                if pesan.get("berkas"):
+                    st.caption(f"📎 {pesan['berkas']}")
+                if pesan.get("model"):
+                    st.caption(f"model: {pesan['model']}")
 
-    st.markdown(
-        '<p class="tb-disclaimer">Dijawab oleh AI. Harga, jadwal, dan syarat dokumen '
-        'tetap perlu dicek di sumber resmi.</p>',
-        unsafe_allow_html=True,
+        if not api_key:
+            st.info(
+                "Masukkan **Google AI API Key** di sidebar untuk mulai mengobrol. "
+                "Key gratis bisa diambil di [aistudio.google.com](https://aistudio.google.com) → **Get API Key**.",
+                icon="🔑",
+            )
+
+        st.markdown(
+            '<p class="tb-disclaimer">Dijawab oleh AI. Harga, jadwal, dan syarat dokumen '
+            'tetap perlu dicek di sumber resmi.</p>',
+            unsafe_allow_html=True,
+        )
+
+    elif menu == "Uji Multimodal":
+        st.markdown(ui.panel_judul(
+            "Uji Multimodal",
+            "Empat jenis input diuji satu per satu, terpisah dari percakapan.",
+        ), unsafe_allow_html=True)
+
+        jenis = st.radio("Jenis input", list(MODE_UJI), horizontal=True, label_visibility="collapsed")
+        contoh_prompt, tipe = MODE_UJI[jenis]
+
+        berkas_uji = None
+        if tipe:
+            berkas_uji = st.file_uploader(f"Berkas {jenis.lower()}", type=tipe, key=f"uji-{jenis}")
+
+        prompt_uji = st.text_area("Prompt", value=contoh_prompt, height=90)
+
+        if st.button("Jalankan", disabled=not buddy):
+            if tipe and berkas_uji is None:
+                st.warning(f"Pilih berkas {jenis.lower()} dulu.")
+            else:
+                lampiran_uji = None
+                if berkas_uji is not None:
+                    lampiran_uji = (berkas_uji.getvalue(), tebak_mime(berkas_uji))
+
+                with st.chat_message("assistant", avatar="🧭"):
+                    st.markdown('<span class="tb-bot"></span>', unsafe_allow_html=True)
+                    try:
+                        st.write_stream(buddy.alirkan(
+                            [{"peran": "user", "teks": prompt_uji}],
+                            lampiran_uji,
+                            st.session_state.gaya,
+                            temperature, top_p, top_k,
+                        ))
+                        st.caption(f"model: {buddy.model_aktif}")
+                    except RuntimeError as err:
+                        st.error(str(err), icon="⚠️")
+
+        if not api_key:
+            st.info("Isi API key di sidebar untuk menjalankan pengujian.", icon="🔑")
+
+    else:
+        st.markdown(ui.panel_judul(
+            "Tentang Proyek",
+            "Chatbot asisten perjalanan berbasis Google Gemini.",
+        ), unsafe_allow_html=True)
+        st.markdown(ui.tentang(GAYA), unsafe_allow_html=True)
+
+if menu == "Percakapan":
+    diketik = st.chat_input(
+        "Mau ke mana kali ini?" if buddy else "Isi API key di sidebar dulu",
+        disabled=not buddy,
     )
+    prompt = diketik or st.session_state.antre
+    st.session_state.antre = None
+else:
+    prompt = None
 
-diketik = st.chat_input("Mau ke mana kali ini?")
-prompt = diketik or st.session_state.antre
-st.session_state.antre = None
-
-if prompt:
+if prompt and buddy:
     berkas = None
     if lampiran is not None:
         try:

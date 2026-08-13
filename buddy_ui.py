@@ -69,6 +69,18 @@ CSS = f"""
 }}
 .tb-dot {{ width:7px; height:7px; border-radius:50%; background:#34D77F;
   box-shadow:0 0 0 3px rgba(52,215,127,.18); flex:none; }}
+.tb-dot-off {{ background:#FF6B68; box-shadow:0 0 0 3px rgba(255,107,104,.18); }}
+
+/* radio menu di sidebar dibuat seperti daftar navigasi versi web */
+[data-testid="stSidebar"] [data-testid="stRadio"] {{
+  background:transparent; border:0; padding:0; margin-bottom:14px;
+}}
+[data-testid="stSidebar"] [data-testid="stRadioOption"] {{
+  padding:9px 11px; border-radius:11px;
+}}
+[data-testid="stSidebar"] [data-testid="stRadioOption"]:has(input:checked) {{
+  background:{GRAD_DIM}; box-shadow:inset 0 0 0 1px {LINE};
+}}
 
 /* kartu panel kanan */
 .tb-card {{
@@ -211,6 +223,45 @@ def sidebar_profil(gaya_label: str, pesan: int, menit: int, lampiran: int) -> st
   <div class="tb-stat"><span>Pesan</span><strong>{pesan}</strong></div>
   <div class="tb-stat"><span>Menit</span><strong>{menit}</strong></div>
   <div class="tb-stat"><span>Lampiran</span><strong>{lampiran}</strong></div>
+</div>
+"""
+
+
+def panel_judul(judul: str, sub: str) -> str:
+    return (
+        f'<h2 style="font-size:23px;font-weight:700;color:{TEXT};margin:0">{escape(judul)}</h2>'
+        f'<p style="margin:6px 0 16px;color:{TEXT_DIM};font-size:14px">{escape(sub)}</p>'
+    )
+
+
+def tentang(gaya_semua) -> str:
+    kartu_gaya = "".join(
+        f'<div style="padding:11px 13px;background:{CARD_2};border-radius:11px;margin-bottom:8px">'
+        f'<b style="font-size:13.5px;color:{TEXT}">{escape(g.label)}</b>'
+        f'<small style="display:block;margin-top:3px;font-size:12px;color:{TEXT_FAINT}">{escape(g.deskripsi)}</small>'
+        f'<div style="margin-top:7px;font-size:11.5px;color:{BRAND_INK}">'
+        f'temperature {g.temperature} &middot; top_p {g.top_p} &middot; top_k {g.top_k}</div></div>'
+        for g in gaya_semua.values()
+    )
+
+    return f"""
+<div class="tb-card">
+  <h3 style="font-size:15.5px;color:{TEXT};margin:0 0 10px">Cara kerjanya</h3>
+  <p style="color:{TEXT_DIM};font-size:13.5px;margin:0 0 10px">Seluruh riwayat percakapan dikirim
+  ulang ke Gemini tiap giliran, jadi bot ingat destinasi dan budget yang sudah disebut.
+  System instruction dan preset parameter menyesuaikan gaya bahasa yang dipilih.</p>
+  <p style="color:{TEXT_DIM};font-size:13.5px;margin:0">API key disimpan di secrets server,
+  tidak pernah ikut ke dalam repo.</p>
+</div>
+<div class="tb-card">
+  <h3 style="font-size:15.5px;color:{TEXT};margin:0 0 10px">Gaya bahasa</h3>
+  {kartu_gaya}
+</div>
+<div class="tb-card">
+  <h3 style="font-size:15.5px;color:{TEXT};margin:0 0 10px">Dua versi</h3>
+  <p style="color:{TEXT_DIM};font-size:13.5px;margin:0">Aplikasi ini punya versi Express + vanilla JS
+  (folder <code>client/</code> dan <code>server/</code>) dan versi Streamlit ini. Keduanya memakai
+  persona, preset parameter, dan urutan fallback model yang sama.</p>
 </div>
 """
 
