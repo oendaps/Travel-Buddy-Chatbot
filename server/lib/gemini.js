@@ -1,7 +1,7 @@
 import '../env.js';
 import { GoogleGenAI } from '@google/genai';
 
-export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+export const SERVER_KEY = process.env.GEMINI_API_KEY || '';
 
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
@@ -18,6 +18,22 @@ let activeModel = PRIMARY_MODEL;
 
 export function getActiveModel() {
   return activeModel;
+}
+
+// Tiap key butuh client sendiri. Disimpan supaya tidak bikin objek baru tiap
+// request, tapi dibatasi biar key acak dari luar tidak menumpuk di memori.
+const clients = new Map();
+const MAX_CLIENTS = 20;
+
+function getClient(apiKey) {
+  let client = clients.get(apiKey);
+  if (client) return client;
+
+  if (clients.size >= MAX_CLIENTS) clients.delete(clients.keys().next().value);
+
+  client = new GoogleGenAI({ apiKey });
+  clients.set(apiKey, client);
+  return client;
 }
 
 // Error dari SDK datang sebagai JSON string di dalam message. Dibuka dulu.
@@ -72,19 +88,22 @@ function candidateOrder() {
   return [activeModel, ...MODEL_CANDIDATES.filter((m) => m !== activeModel)];
 }
 
-function rememberWorkingModel(model) {
-  if (model === activeModel) return;
+// Model yang berhasil cuma diingat kalau yang dipakai key server. Kalau tidak,
+// satu pengunjung yang kuotanya habis akan menggeser default untuk semua orang.
+function rememberWorkingModel(model, apiKey) {
+  if (model === activeModel || apiKey !== SERVER_KEY) return;
   console.warn(`[model] ${activeModel} tidak bisa dipakai, pindah ke ${model}`);
   activeModel = model;
 }
 
-export async function generate({ contents, config }) {
+export async function generate({ contents, config, apiKey }) {
   const attempts = [];
+  const ai = getClient(apiKey);
 
   for (const model of candidateOrder()) {
     try {
       const response = await ai.models.generateContent({ model, contents, config });
-      rememberWorkingModel(model);
+      rememberWorkingModel(model, apiKey);
       return { text: extractText(response), model };
     } catch (err) {
       const { status, message } = parseGeminiError(err);
@@ -98,8 +117,9 @@ export async function generate({ contents, config }) {
   throw allModelsFailed(attempts);
 }
 
-export async function generateStream({ contents, config }) {
+export async function generateStream({ contents, config, apiKey }) {
   const attempts = [];
+  const ai = getClient(apiKey);
 
   for (const model of candidateOrder()) {
     try {
@@ -110,7 +130,7 @@ export async function generateStream({ contents, config }) {
       // response header belum dikirim. Setelah stream jalan, model tidak
       // mungkin diganti lagi di tengah jalan.
       const first = await iterator.next();
-      rememberWorkingModel(model);
+      rememberWorkingModel(model, apiKey);
 
       // Diisi potongan terakhir. MAX_TOKENS bikin jawaban putus di tengah kata,
       // dan tanpa ini user cuma lihat kalimat menggantung tanpa penjelasan.
@@ -149,10 +169,10 @@ export async function generateStream({ contents, config }) {
   throw allModelsFailed(attempts);
 }
 
-export async function listUsableModels() {
+export async function listUsableModels(apiKey) {
   const models = [];
 
-  for await (const model of await ai.models.list()) {
+  for await (const model of await getClient(apiKey).models.list()) {
     if (model.supportedActions?.includes('generateContent')) {
       models.push(model.name?.replace(/^models\//, ''));
     }

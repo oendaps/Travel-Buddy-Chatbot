@@ -15,6 +15,9 @@ services:
     autoDeployTrigger: commit
 
     envVars:
+      # Biarkan KOSONG kalau app-nya dibuka untuk umum: tiap pengunjung
+      # mengisi API key sendiri di UI, jadi kuota kamu tidak terpakai habis.
+      # Isi hanya kalau app-nya buat kamu sendiri.
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

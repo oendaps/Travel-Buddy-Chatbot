@@ -229,6 +229,26 @@
 
   <aside class="rail" id="rail">
 
+    <section class="card key-card" id="key-card" hidden>
+      <h3 class="card-title">Kunci API</h3>
+      <p class="card-note key-intro">
+        Server ini tidak menyimpan API key, jadi pakai punyamu sendiri. Gratis di
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+      </p>
+      <div class="field">
+        <label for="api-key">Google AI API Key</label>
+        <input type="password" id="api-key" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="key-actions">
+        <button type="button" class="solid-btn" id="key-save">Simpan</button>
+        <button type="button" class="ghost-btn" id="key-clear">Hapus</button>
+      </div>
+      <p class="card-note">
+        Disimpan di browser kamu saja dan dikirim langsung ke Google lewat server ini.
+        Tidak pernah dicatat di log.
+      </p>
+    </section>
+
     <section class="card gauge-card">
       <h3 class="card-title">Kreativitas</h3>
       <div class="gauge">

@@ -650,6 +650,25 @@ code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-si
   padding-right: 3px;
 }
 
+.key-card { border-color: var(--brand); }
+.key-intro { margin-top: 0; margin-bottom: 14px; }
+.key-intro a { color: var(--brand-ink); }
+.key-actions { display: flex; gap: 8px; }
+.key-actions .solid-btn { flex: 1; padding: 9px 14px; font-size: 13px; }
+.key-actions .ghost-btn { padding: 9px 14px; }
+
+.key-card .field input {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: var(--card-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+}
+
+.key-card .field input:focus { outline: none; border-color: var(--brand); }
+
 .gauge { position: relative; width: 152px; margin: 0 auto; }
 .gauge svg { width: 100%; display: block; transform: rotate(-90deg); }
 

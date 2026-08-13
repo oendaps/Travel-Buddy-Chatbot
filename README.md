@@ -30,6 +30,9 @@ ikut dibaca model.
 - Lampiran gambar, PDF, teks, dan audio langsung di dalam percakapan.
 - Panel terpisah untuk menguji empat endpoint multimodal satu per satu.
 - Tema gelap dan terang, tersimpan di localStorage.
+- Bisa dijalankan tanpa API key di server. Kalau `GEMINI_API_KEY` kosong,
+  pengunjung memasukkan key sendiri lewat UI dan key itu hanya tersimpan di
+  browser mereka.
 
 ## Menjalankan
 
@@ -137,8 +140,17 @@ Yang penting: **jangan set Root Directory ke `server`**. Express melayani folder
 root directory ke runtime. Biarkan kosong, build dari `cd server && npm ci`,
 start dari `node server/index.js`.
 
-Isi `GEMINI_API_KEY` lewat dashboard Render, jangan ditulis di `render.yaml`.
 Jangan set `PORT` — Render menyuntikkannya sendiri.
+
+Soal `GEMINI_API_KEY`, ada dua pilihan:
+
+**Dibuka untuk umum** — biarkan kosong. Panel "Kunci API" muncul di UI dan tiap
+pengunjung memakai key masing-masing, jadi kuota kamu tidak habis dipakai orang
+lain. Kuota Gemini free tier cuma 20 request per hari per model, jadi kalau
+key kamu yang dipakai bersama, demonya mati setelah beberapa percakapan.
+
+**Untuk dipakai sendiri** — isi key kamu. Panel itu tidak muncul dan langsung
+bisa dipakai tanpa setup.
 
 Instance gratis tidur setelah 15 menit tanpa trafik dan butuh sekitar satu menit
 untuk bangun. Karena Express juga yang melayani halamannya, membuka situsnya
@@ -149,7 +161,7 @@ mengetik.
 
 | Variabel | Default | Keterangan |
 |---|---|---|
-| `GEMINI_API_KEY` | — | wajib |
+| `GEMINI_API_KEY` | — | opsional; kalau kosong, pengunjung membawa key sendiri |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | model awal, ada fallback otomatis |
 | `GEMINI_MAX_OUTPUT_TOKENS` | `4096` | batas panjang jawaban |
 | `MAX_HISTORY_MESSAGES` | `20` | jumlah pesan terakhir yang dikirim sebagai konteks |

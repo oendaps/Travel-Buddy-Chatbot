@@ -15,6 +15,19 @@ function announce(text) {
   $('sr-status').textContent = text;
 }
 
+// Kalau server punya key sendiri, kartu ini tidak pernah muncul dan userKey
+// tetap kosong. Key pengunjung cuma tinggal di browser masing-masing.
+let needsUserKey = false;
+let userKey = localStorage.getItem('tb-key') ?? '';
+
+function authHeaders(extra = {}) {
+  return userKey ? { ...extra, 'X-Gemini-Key': userKey } : extra;
+}
+
+function hasKey() {
+  return !needsUserKey || Boolean(userKey);
+}
+
 const startedAt = Date.now();
 const latencies = [];
 const counters = { sent: 0, files: 0, chars: 0 };
@@ -394,7 +407,7 @@ async function errorFrom(res) {
 async function streamReply(bubble) {
   const res = await fetch('/api/chat/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ conversation, settings: settings() }),
   });
 
@@ -449,11 +462,11 @@ async function plainReply(file) {
     body.append('conversation', JSON.stringify(conversation));
     body.append('settings', JSON.stringify(settings()));
     body.append('attachment', file);
-    options = { method: 'POST', body };
+    options = { method: 'POST', body, headers: authHeaders() };
   } else {
     options = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ conversation, settings: settings() }),
     };
   }
@@ -470,11 +483,52 @@ async function plainReply(file) {
 
 function setBusy(state) {
   busy = state;
-  $('send-btn').disabled = state;
+  $('send-btn').disabled = state || !hasKey();
   $('file-input').disabled = state;
 }
 
+function paintKeyState() {
+  const ready = hasKey();
+  $('send-btn').disabled = busy || !ready;
+  $('user-input').placeholder = ready
+    ? 'Mau ke mana kali ini?'
+    : 'Isi API key di panel kanan dulu';
+}
+
+$('key-save').addEventListener('click', () => {
+  const value = $('api-key').value.trim();
+
+  if (!value) {
+    toast('API key masih kosong');
+    return;
+  }
+
+  userKey = value;
+  localStorage.setItem('tb-key', value);
+  paintKeyState();
+  toast('API key tersimpan di browser ini');
+  $('user-input').focus();
+});
+
+$('key-clear').addEventListener('click', () => {
+  userKey = '';
+  localStorage.removeItem('tb-key');
+  $('api-key').value = '';
+  paintKeyState();
+  toast('API key dihapus');
+});
+
+$('api-key').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('key-save').click(); }
+});
+
 async function send(text, file) {
+  if (!hasKey()) {
+    toast('Isi API key di panel kanan dulu');
+    $('api-key').focus();
+    return;
+  }
+
   addMessage('user', text, { file });
   conversation.push({ role: 'user', text });
 
@@ -675,11 +729,11 @@ $('mm-form').addEventListener('submit', async (e) => {
     const body = new FormData();
     body.append(cfg.field, file);
     if (prompt) body.append('prompt', prompt);
-    options = { method: 'POST', body };
+    options = { method: 'POST', body, headers: authHeaders() };
   } else {
     options = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ prompt }),
     };
   }
@@ -730,6 +784,11 @@ async function loadConfig() {
 
     const config = await res.json();
     if (Number.isFinite(config.maxFileSizeMB)) maxFileMB = config.maxFileSizeMB;
+
+    needsUserKey = config.serverKey === false;
+    $('key-card').hidden = !needsUserKey;
+    if (needsUserKey) $('api-key').value = userKey;
+    paintKeyState();
 
     const seg = $('style-seg');
     const about = $('about-styles');

@@ -5,7 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 
-import { generate, generateStream, getActiveModel, listUsableModels, MODEL_CANDIDATES } from './lib/gemini.js';
+import { generate, generateStream, getActiveModel, listUsableModels, MODEL_CANDIDATES, SERVER_KEY } from './lib/gemini.js';
 import { buildGenerationConfig, buildSystemInstruction, DEFAULT_STYLE, isStyle, STYLES } from './lib/persona.js';
 import { describeFile, fileToInlinePart } from './lib/files.js';
 
@@ -17,9 +17,8 @@ const MAX_HISTORY = num('MAX_HISTORY_MESSAGES', 20);
 const MAX_FILE_MB = num('MAX_FILE_MB', 20);
 const MAX_FILE_SIZE = MAX_FILE_MB * 1024 * 1024;
 
-if (!process.env.GEMINI_API_KEY) {
-  console.error('GEMINI_API_KEY kosong. Salin server/.env.example jadi server/.env lalu isi API key-nya.');
-  process.exit(1);
+if (!SERVER_KEY) {
+  console.warn('GEMINI_API_KEY kosong. Server jalan, tapi tiap pengunjung harus mengisi API key sendiri di UI.');
 }
 
 const app = express();
@@ -35,6 +34,18 @@ const upload = multer({
 
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const httpError = (status, message) => Object.assign(new Error(message), { status });
+
+// Key server selalu menang. Kalau server tidak punya key, pengunjung membawa
+// key sendiri lewat header supaya cara ini tetap jalan untuk body JSON maupun
+// form-data. Key pengunjung tidak pernah ditulis ke log atau ke disk.
+function apiKeyFor(req) {
+  if (SERVER_KEY) return SERVER_KEY;
+
+  const sent = String(req.get('X-Gemini-Key') || '').trim();
+  if (sent) return sent;
+
+  throw httpError(401, 'API key belum diisi. Masukkan Google AI API key kamu di panel kanan.');
+}
 
 const VALID_ROLES = new Set(['user', 'model']);
 
@@ -116,7 +127,7 @@ function prepareChatRequest(req) {
 
 app.post('/api/chat', upload.single('attachment'), asyncHandler(async (req, res) => {
   const { contents, config, style, attachment } = prepareChatRequest(req);
-  const { text, model } = await generate({ contents, config });
+  const { text, model } = await generate({ contents, config, apiKey: apiKeyFor(req) });
 
   const payload = { result: text, model, style };
 
@@ -134,7 +145,7 @@ app.post('/api/chat/stream', asyncHandler(async (req, res) => {
 
   // Sengaja dipanggil sebelum writeHead: selama header belum keluar,
   // error masih bisa dibalas sebagai JSON biasa.
-  const { model, stream, state } = await generateStream({ contents, config });
+  const { model, stream, state } = await generateStream({ contents, config, apiKey: apiKeyFor(req) });
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
@@ -180,6 +191,7 @@ function fileEndpoint({ field, defaultPrompt }) {
     const inlinePart = fileToInlinePart(req.file);
 
     const { text, model } = await generate({
+      apiKey: apiKeyFor(req),
       contents: [{ role: 'user', parts: [{ text: prompt }, inlinePart] }],
       config: {
         ...buildGenerationConfig(DEFAULT_STYLE),
@@ -203,6 +215,7 @@ app.post('/generate-text', asyncHandler(async (req, res) => {
   }
 
   const { text, model } = await generate({
+    apiKey: apiKeyFor(req),
     contents: prompt,
     config: {
       ...buildGenerationConfig(DEFAULT_STYLE),
@@ -251,7 +264,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     model: getActiveModel(),
-    apiKeyLoaded: Boolean(process.env.GEMINI_API_KEY),
+    serverKey: Boolean(SERVER_KEY),
     maxHistoryMessages: MAX_HISTORY,
     uptimeSeconds: Math.round(process.uptime()),
   });
@@ -268,6 +281,7 @@ app.get('/api/config', (req, res) => {
       ...style.config,
     })),
     maxFileSizeMB: MAX_FILE_MB,
+    serverKey: Boolean(SERVER_KEY),
   });
 });
 
@@ -275,7 +289,7 @@ app.get('/api/models', asyncHandler(async (req, res) => {
   res.json({
     active: getActiveModel(),
     candidates: MODEL_CANDIDATES,
-    available: await listUsableModels(),
+    available: await listUsableModels(apiKeyFor(req)),
   });
 }));
 
