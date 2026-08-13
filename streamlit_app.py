@@ -1,53 +1,41 @@
 """Travel Buddy versi Streamlit.
 
-Versi ini dipakai untuk deploy ke Streamlit Community Cloud. Aplikasi utamanya
-ada di client/ dan server/ (Express + vanilla JS); yang ini memakai persona dan
-aturan model yang sama lewat buddy_core.py.
+Tampilan dan persona dibuat mengikuti versi web di client/ dan server/, supaya
+dua-duanya terasa seperti aplikasi yang sama. Versi ini dipakai untuk deploy ke
+Streamlit Community Cloud, yang hanya menjalankan Python.
 """
 
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 import streamlit as st
 
-from buddy_core import GAYA, GAYA_DEFAULT, MODEL_KANDIDAT, Buddy
+import buddy_ui as ui
+from buddy_core import GAYA, GAYA_DEFAULT, MAX_RIWAYAT, MODEL_KANDIDAT, Buddy
 
 st.set_page_config(
     page_title="Travel Buddy — Asisten Perjalanan AI",
     page_icon="🧭",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="expanded",
 )
 
-SAPAAN = (
-    "Halo! Aku **Travel Buddy** 🧭\n\n"
-    "Tanya soal destinasi, itinerary, atau budget. Kamu juga bisa melampirkan foto "
-    "tempat, dokumen rencana perjalanan, atau rekaman suara lewat sidebar."
-)
-
-CONTOH = [
-    "Itinerary Yogyakarta 3 hari",
-    "Bali vs Lombok untuk honeymoon",
-    "Pertama kali ke Jepang",
-    "Kuliner malam murah di Bandung",
-]
-
-PROMPT_PENUH = {
+CONTOH = {
     "Itinerary Yogyakarta 3 hari": "Buatkan itinerary 3 hari di Yogyakarta dengan budget 1,5 juta.",
-    "Bali vs Lombok untuk honeymoon": "Bandingkan Bali dan Lombok untuk honeymoon 5 hari.",
+    "Bali vs Lombok": "Bandingkan Bali dan Lombok untuk honeymoon 5 hari.",
     "Pertama kali ke Jepang": "Apa saja yang perlu disiapkan untuk pertama kali ke Jepang saat musim semi?",
-    "Kuliner malam murah di Bandung": "Rekomendasi kuliner malam murah di Bandung beserta perkiraan harganya.",
+    "Kuliner malam Bandung": "Rekomendasi kuliner malam murah di Bandung beserta perkiraan harganya.",
 }
 
 MIME_EKSTENSI = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-    ".webp": "image/webp", ".gif": "image/gif", ".heic": "image/heic",
+    ".webp": "image/webp", ".gif": "image/gif",
     ".pdf": "application/pdf", ".txt": "text/plain", ".md": "text/md",
-    ".csv": "text/csv", ".json": "text/plain",
-    ".mp3": "audio/mp3", ".wav": "audio/wav", ".m4a": "audio/mp4",
-    ".aac": "audio/aac", ".ogg": "audio/ogg", ".flac": "audio/flac",
+    ".csv": "text/csv",
+    ".mp3": "audio/mp3", ".wav": "audio/wav", ".m4a": "audio/mp4", ".ogg": "audio/ogg",
 }
 
 TIPE_DITERIMA = ["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "md", "csv", "mp3", "wav", "m4a", "ogg"]
@@ -87,24 +75,39 @@ def siapkan_sesi() -> None:
     st.session_state.setdefault("antre", None)
     st.session_state.setdefault("buddy", None)
     st.session_state.setdefault("sidik", None)
+    st.session_state.setdefault("durasi", [])
+    st.session_state.setdefault("karakter", 0)
+    st.session_state.setdefault("lampiran_terkirim", 0)
+    st.session_state.setdefault("mulai", time.time())
 
 
 def reset_percakapan() -> None:
     st.session_state.riwayat = []
     st.session_state.antre = None
+    st.session_state.durasi = []
+    st.session_state.karakter = 0
+    st.session_state.lampiran_terkirim = 0
 
 
 siapkan_sesi()
+st.markdown(ui.CSS, unsafe_allow_html=True)
+
+riwayat = st.session_state.riwayat
+gaya = GAYA[st.session_state.gaya]
+pesan_user = sum(1 for p in riwayat if p["peran"] == "user")
+menit = int((time.time() - st.session_state.mulai) // 60)
 
 with st.sidebar:
-    st.markdown("### 🧭 Travel Buddy")
-    st.caption("JELAJAH · RENCANA · NIKMATI")
+    st.markdown(
+        ui.sidebar_profil(gaya.label, pesan_user, menit, st.session_state.lampiran_terkirim),
+        unsafe_allow_html=True,
+    )
 
     key_bawaan = api_key_tersimpan()
 
-    with st.expander("⚙️ Pengaturan", expanded=not key_bawaan):
+    with st.expander("Pengaturan", expanded=not key_bawaan):
         if key_bawaan:
-            st.success("API key terbaca dari secrets/environment.", icon="🔑")
+            st.caption("API key terbaca dari secrets server.")
             api_key = key_bawaan
         else:
             api_key = st.text_input(
@@ -121,52 +124,21 @@ with st.sidebar:
             help="Kalau kuota model ini habis, aplikasi otomatis pindah ke kandidat berikutnya.",
         )
 
-    st.divider()
+    lampiran = st.file_uploader("Lampiran", type=TIPE_DITERIMA, label_visibility="collapsed")
+    st.caption("Foto tempat, dokumen rencana, atau rekaman suara. Ikut dibaca model.")
 
-    label_gaya = [g.label for g in GAYA.values()]
-    kunci_gaya = list(GAYA.keys())
-    pilihan = st.radio(
-        "Gaya bahasa",
-        label_gaya,
-        index=kunci_gaya.index(st.session_state.gaya),
-        horizontal=False,
-    )
-    st.session_state.gaya = kunci_gaya[label_gaya.index(pilihan)]
-    gaya = GAYA[st.session_state.gaya]
-    st.caption(gaya.deskripsi)
-
-    with st.expander("🎛️ Parameter", expanded=False):
-        temperature = st.slider("Temperature", 0.0, 2.0, gaya.temperature, 0.1)
-        top_p = st.slider("Top P", 0.0, 1.0, gaya.top_p, 0.05)
-        top_k = st.slider("Top K", 1, 40, gaya.top_k, 1)
-        st.caption("Nilai awal mengikuti preset gaya bahasa. Geser untuk menimpanya.")
-
-    st.divider()
-
-    lampiran = st.file_uploader(
-        "Lampiran (opsional)",
-        type=TIPE_DITERIMA,
-        help="Foto tempat, dokumen rencana, atau rekaman suara. Ikut dibaca model.",
-    )
-
-    st.divider()
-
-    st.metric("Giliran percakapan", len(st.session_state.riwayat))
-
-    if st.button("🔄 Percakapan Baru", use_container_width=True):
+    if st.button("Percakapan baru", use_container_width=True):
         reset_percakapan()
         st.rerun()
 
-    st.caption("Dibuat dengan Streamlit + Google Gemini")
-
-st.title("🧭 Travel Buddy")
-st.caption("Asisten perjalanan berbahasa Indonesia — rencanakan destinasi, itinerary, dan budget")
+    # Diisi belakangan: model aktif baru diketahui setelah client dibuat.
+    slot_model = st.empty()
 
 if not api_key:
+    st.markdown(ui.HERO, unsafe_allow_html=True)
     st.info(
-        "Masukkan **Google AI API Key** di sidebar untuk mulai mengobrol.\n\n"
-        "Key gratis bisa diambil di [aistudio.google.com](https://aistudio.google.com) "
-        "→ **Get API Key**.",
+        "Masukkan **Google AI API Key** di sidebar untuk mulai mengobrol. "
+        "Key gratis bisa diambil di [aistudio.google.com](https://aistudio.google.com) → **Get API Key**.",
         icon="🔑",
     )
     st.stop()
@@ -179,24 +151,67 @@ if st.session_state.sidik != sidik:
 
 buddy: Buddy = st.session_state.buddy
 
-if not st.session_state.riwayat:
-    with st.chat_message("assistant", avatar="🧭"):
-        st.markdown(SAPAAN)
+slot_model.markdown(
+    f'<p class="tb-chip"><span class="tb-dot"></span>{buddy.model_aktif}</p>',
+    unsafe_allow_html=True,
+)
 
-    kolom = st.columns(2)
-    for i, judul in enumerate(CONTOH):
-        if kolom[i % 2].button(judul, use_container_width=True, key=f"contoh-{i}"):
-            st.session_state.antre = PROMPT_PENUH[judul]
-            st.rerun()
+kolom_chat, kolom_rail = st.columns([2.15, 1], gap="medium")
 
-for pesan in st.session_state.riwayat:
-    peran = "user" if pesan["peran"] == "user" else "assistant"
-    with st.chat_message(peran, avatar=None if peran == "user" else "🧭"):
-        st.markdown(pesan["teks"])
-        if pesan.get("berkas"):
-            st.caption(f"📎 {pesan['berkas']}")
-        if pesan.get("model"):
-            st.caption(f"model: {pesan['model']}")
+with kolom_rail:
+    st.markdown(ui.gauge(gaya.temperature), unsafe_allow_html=True)
+
+    label = [g.label for g in GAYA.values()]
+    kunci = list(GAYA.keys())
+    dipilih = st.radio(
+        "Gaya Bahasa",
+        label,
+        captions=[g.deskripsi for g in GAYA.values()],
+        index=kunci.index(st.session_state.gaya),
+    )
+    if kunci[label.index(dipilih)] != st.session_state.gaya:
+        st.session_state.gaya = kunci[label.index(dipilih)]
+        st.rerun()
+
+    with st.expander("Parameter", expanded=False):
+        temperature = st.slider("Temperature", 0.0, 2.0, gaya.temperature, 0.1)
+        top_p = st.slider("Top P", 0.0, 1.0, gaya.top_p, 0.05)
+        top_k = st.slider("Top K", 1, 40, gaya.top_k, 1)
+        st.caption("Nilai awal mengikuti preset gaya bahasa.")
+
+    st.markdown(ui.bar_respons(st.session_state.durasi), unsafe_allow_html=True)
+    st.markdown(
+        ui.kartu_sesi(len(riwayat), min(len(riwayat), MAX_RIWAYAT), st.session_state.karakter),
+        unsafe_allow_html=True,
+    )
+
+with kolom_chat:
+    if not riwayat:
+        st.markdown(ui.HERO, unsafe_allow_html=True)
+
+        tombol = st.columns(2)
+        for i, judul in enumerate(CONTOH):
+            if tombol[i % 2].button(judul, use_container_width=True, key=f"contoh-{i}"):
+                st.session_state.antre = CONTOH[judul]
+                st.rerun()
+
+    for pesan in riwayat:
+        peran = "user" if pesan["peran"] == "user" else "assistant"
+        with st.chat_message(peran, avatar=None if peran == "user" else "🧭"):
+            # Penanda tersembunyi ini yang dipakai CSS untuk membedakan gelembung
+            # user dan bot, karena Streamlit tidak menandai perannya di DOM.
+            st.markdown(f'<span class="tb-{"user" if peran == "user" else "bot"}"></span>', unsafe_allow_html=True)
+            st.markdown(pesan["teks"])
+            if pesan.get("berkas"):
+                st.caption(f"📎 {pesan['berkas']}")
+            if pesan.get("model"):
+                st.caption(f"model: {pesan['model']}")
+
+    st.markdown(
+        '<p class="tb-disclaimer">Dijawab oleh AI. Harga, jadwal, dan syarat dokumen '
+        'tetap perlu dicek di sumber resmi.</p>',
+        unsafe_allow_html=True,
+    )
 
 diketik = st.chat_input("Mau ke mana kali ini?")
 prompt = diketik or st.session_state.antre
@@ -211,52 +226,53 @@ if prompt:
             st.error(str(err))
             st.stop()
 
-    st.session_state.riwayat.append({
+    riwayat.append({
         "peran": "user",
         "teks": prompt,
         "berkas": lampiran.name if lampiran is not None else None,
     })
 
-    with st.chat_message("user"):
-        st.markdown(prompt)
-        if lampiran is not None:
-            st.caption(f"📎 {lampiran.name}")
+    with kolom_chat:
+        with st.chat_message("user"):
+            st.markdown('<span class="tb-user"></span>', unsafe_allow_html=True)
+            st.markdown(prompt)
+            if lampiran is not None:
+                st.caption(f"📎 {lampiran.name}")
 
-    with st.chat_message("assistant", avatar="🧭"):
-        try:
-            aliran = buddy.alirkan(
-                st.session_state.riwayat,
-                berkas,
-                st.session_state.gaya,
-                temperature,
-                top_p,
-                top_k,
-            )
-            jawaban = st.write_stream(aliran)
-        except RuntimeError as err:
-            pesan = str(err)
-            st.error(pesan, icon="⚠️")
-
-            if "429" in pesan or "quota" in pesan.lower():
-                st.info(
-                    "Kuota Gemini free tier dihitung **per model per hari**. Coba ganti "
-                    "model di sidebar, atau pakai API key sendiri lewat Pengaturan.",
-                    icon="💡",
+        with st.chat_message("assistant", avatar="🧭"):
+            st.markdown('<span class="tb-bot"></span>', unsafe_allow_html=True)
+            mulai = time.time()
+            try:
+                jawaban = st.write_stream(
+                    buddy.alirkan(riwayat, berkas, st.session_state.gaya, temperature, top_p, top_k)
                 )
+            except RuntimeError as err:
+                catatan = str(err)
+                st.error(catatan, icon="⚠️")
 
-            # Pesan yang gagal dijawab dibuang, biar tidak menggantung di konteks.
-            st.session_state.riwayat.pop()
-            st.stop()
+                if "429" in catatan or "quota" in catatan.lower():
+                    st.info(
+                        "Kuota Gemini free tier dihitung **per model per hari**. Coba ganti model "
+                        "di sidebar, atau pakai API key sendiri lewat Pengaturan.",
+                        icon="💡",
+                    )
 
-    st.session_state.riwayat.append({
+                # Pesan yang gagal dijawab dibuang, biar tidak menggantung di konteks.
+                riwayat.pop()
+                st.stop()
+
+    st.session_state.durasi.append(time.time() - mulai)
+    st.session_state.karakter += len(jawaban)
+    if lampiran is not None:
+        st.session_state.lampiran_terkirim += 1
+
+    riwayat.append({
         "peran": "model",
         "teks": jawaban,
         "berkas": None,
         "model": buddy.model_aktif,
     })
 
-    # Sidebar sudah dirender di atas dengan riwayat versi lama, jadi hitungannya
-    # tertinggal satu giliran. Rerun bikin angkanya ikut jawaban yang baru masuk.
+    # Sidebar dan panel kanan sudah dirender dengan riwayat versi lama, jadi
+    # angkanya tertinggal satu giliran tanpa rerun.
     st.rerun()
-
-st.caption("Dijawab oleh AI. Harga, jadwal, dan syarat dokumen tetap perlu dicek di sumber resmi.")
