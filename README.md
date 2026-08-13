@@ -7,7 +7,16 @@ Tanya soal destinasi, itinerary, atau budget lewat percakapan biasa. Bisa juga
 melampirkan foto tempat, dokumen rencana perjalanan, atau rekaman suara — semuanya
 ikut dibaca model.
 
-![UI Travel Buddy](docs/screenshot-chat.png)
+![Travel Buddy tema gelap](docs/screenshot-chat.png)
+
+<details>
+<summary>Tampilan tema terang dan mobile</summary>
+
+![Tema terang](docs/screenshot-light.png)
+
+<img src="docs/screenshot-mobile.png" width="380" alt="Tampilan mobile">
+
+</details>
 
 ## Fitur
 
