@@ -759,9 +759,10 @@ code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-si
   border-radius: 50%;
 }
 
+/* Firefox tidak bisa pakai gradient di thumb, jadi warna solid yang ikut tema. */
 .slider input[type="range"]::-moz-range-thumb {
   width: 15px; height: 15px;
-  background: #8B6DFF;
+  background: var(--brand);
   border: 2px solid var(--card);
   border-radius: 50%;
 }

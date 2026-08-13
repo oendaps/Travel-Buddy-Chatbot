@@ -1,6 +1,6 @@
 // Cek cepat: API key-nya yang bermasalah, atau kodenya?
 // Jalankan dengan: npm run check
-import 'dotenv/config';
+import '../env.js';
 import { GoogleGenAI } from '@google/genai';
 
 const API_KEY = process.env.GEMINI_API_KEY;

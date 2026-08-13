@@ -1,3 +1,5 @@
+import { num } from '../env.js';
+
 const CORE_PERSONA = `
 Kamu adalah "Travel Buddy", asisten perjalanan untuk wisatawan Indonesia.
 Kamu paham destinasi domestik maupun luar negeri, budget travelling,
@@ -55,23 +57,32 @@ masih masuk akal. Selalu sertakan rincian estimasi biaya dalam bentuk daftar
 
 export const DEFAULT_STYLE = 'santai';
 
+// STYLES[key] ikut nemu properti bawaan Object, jadi 'constructor' lolos
+// dan bikin config kosong. Harus cek properti milik sendiri.
+export function isStyle(key) {
+  return typeof key === 'string' && Object.hasOwn(STYLES, key);
+}
+
+function pickStyle(key) {
+  return isStyle(key) ? STYLES[key] : STYLES[DEFAULT_STYLE];
+}
+
 export function buildSystemInstruction(styleKey = DEFAULT_STYLE) {
-  const style = STYLES[styleKey] ?? STYLES[DEFAULT_STYLE];
+  const style = pickStyle(styleKey);
   return `${CORE_PERSONA}\n\n${style.instruction}`;
 }
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export function buildGenerationConfig(styleKey = DEFAULT_STYLE, overrides = {}) {
-  const style = STYLES[styleKey] ?? STYLES[DEFAULT_STYLE];
-  const config = { ...style.config };
+  const config = { ...pickStyle(styleKey).config };
 
   // Nilai dari slider bisa apa saja, jadi dijepit ke rentang yang diterima Gemini.
   if (Number.isFinite(overrides.temperature)) config.temperature = clamp(overrides.temperature, 0, 2);
   if (Number.isFinite(overrides.topP)) config.topP = clamp(overrides.topP, 0, 1);
   if (Number.isFinite(overrides.topK)) config.topK = Math.round(clamp(overrides.topK, 1, 40));
 
-  config.maxOutputTokens = Number(process.env.GEMINI_MAX_OUTPUT_TOKENS ?? 2048);
+  config.maxOutputTokens = num('GEMINI_MAX_OUTPUT_TOKENS', 4096);
 
   return config;
 }

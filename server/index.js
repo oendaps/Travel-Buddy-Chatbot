@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import { num } from './env.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -6,15 +6,15 @@ import cors from 'cors';
 import multer from 'multer';
 
 import { generate, generateStream, getActiveModel, listUsableModels, MODEL_CANDIDATES } from './lib/gemini.js';
-import { buildGenerationConfig, buildSystemInstruction, DEFAULT_STYLE, STYLES } from './lib/persona.js';
+import { buildGenerationConfig, buildSystemInstruction, DEFAULT_STYLE, isStyle, STYLES } from './lib/persona.js';
 import { describeFile, fileToInlinePart } from './lib/files.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = path.resolve(__dirname, '..', 'client');
 
 const PORT = process.env.PORT || 3000;
-const MAX_HISTORY = Number(process.env.MAX_HISTORY_MESSAGES ?? 20);
-const MAX_FILE_MB = Number(process.env.MAX_FILE_MB ?? 20);
+const MAX_HISTORY = num('MAX_HISTORY_MESSAGES', 20);
+const MAX_FILE_MB = num('MAX_FILE_MB', 20);
 const MAX_FILE_SIZE = MAX_FILE_MB * 1024 * 1024;
 
 if (!process.env.GEMINI_API_KEY) {
@@ -90,7 +90,7 @@ function buildContents(conversation, attachment) {
 
 function readSettings(raw, isMultipart) {
   const settings = readJsonField(raw, 'settings', isMultipart) ?? {};
-  const style = typeof settings.style === 'string' && STYLES[settings.style] ? settings.style : DEFAULT_STYLE;
+  const style = isStyle(settings.style) ? settings.style : DEFAULT_STYLE;
 
   const config = buildGenerationConfig(style, {
     temperature: Number(settings.temperature),

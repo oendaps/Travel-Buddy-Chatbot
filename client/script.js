@@ -9,6 +9,11 @@ let presets = {};
 let pendingFile = null;
 let busy = false;
 let contextLimit = 20;
+let maxFileMB = 20;
+
+function announce(text) {
+  $('sr-status').textContent = text;
+}
 
 const startedAt = Date.now();
 const latencies = [];
@@ -57,15 +62,31 @@ function showPanel(name) {
 }
 
 const drawerBtn = $('drawer-toggle');
+
 drawerBtn.addEventListener('click', () => {
   const open = $('sidebar').classList.toggle('open');
   drawerBtn.setAttribute('aria-expanded', String(open));
+  syncDrawerState();
+  if (open) $('sidebar').querySelector('.nav-item')?.focus();
+  else drawerBtn.focus();
 });
 
 function closeDrawer() {
+  if (!$('sidebar').classList.contains('open')) return;
   $('sidebar').classList.remove('open');
   drawerBtn.setAttribute('aria-expanded', 'false');
+  syncDrawerState();
 }
+
+// Sidebar yang tertutup masih di luar layar tapi tetap bisa di-Tab, jadi
+// isinya dinonaktifkan lewat inert selama drawer ditutup di layar kecil.
+function syncDrawerState() {
+  const sidebar = $('sidebar');
+  const mobile = window.matchMedia('(max-width: 860px)').matches;
+  sidebar.inert = mobile && !sidebar.classList.contains('open');
+}
+
+window.addEventListener('resize', syncDrawerState);
 
 document.addEventListener('click', (e) => {
   if (window.innerWidth > 860) return;
@@ -170,6 +191,11 @@ function addMessage(role, text, { file = null, error = false } = {}) {
 }
 
 function addBotActions(wrap, getText) {
+  // Regenerate selalu mengulang giliran terakhir, jadi tombolnya cuma boleh ada
+  // di balasan paling bawah. Kalau tidak, klik di balasan lama diam-diam
+  // mengubah yang lain.
+  document.querySelectorAll('.msg-actions').forEach((old) => old.remove());
+
   const bar = document.createElement('div');
   bar.className = 'msg-actions';
 
@@ -249,11 +275,41 @@ function applyPreset(key) {
   paintGauge();
 }
 
+// Radiogroup butuh roving tabindex: cuma pilihan aktif yang masuk urutan Tab,
+// sisanya dijangkau pakai panah.
+function markRadios(container, isOn) {
+  container.querySelectorAll('button').forEach((b) => {
+    const on = isOn(b);
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+}
+
+function wireRadioKeys(container, pick) {
+  container.addEventListener('keydown', (e) => {
+    const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+
+    const buttons = [...container.querySelectorAll('button')];
+    const current = buttons.indexOf(document.activeElement);
+    if (current < 0) return;
+
+    e.preventDefault();
+
+    let next;
+    if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = buttons.length - 1;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (current + 1) % buttons.length;
+    else next = (current - 1 + buttons.length) % buttons.length;
+
+    pick(buttons[next]);
+    buttons[next].focus();
+  });
+}
+
 function selectStyle(key) {
   currentStyle = key;
-  document.querySelectorAll('#style-seg button').forEach((b) => {
-    b.setAttribute('aria-checked', String(b.dataset.style === key));
-  });
+  markRadios($('style-seg'), (b) => b.dataset.style === key);
   applyPreset(key);
 }
 
@@ -428,6 +484,7 @@ async function send(text, file) {
 
   const { wrap, bubble } = typingBubble();
   setBusy(true);
+  announce('Travel Buddy sedang menjawab');
 
   const startedRequest = Date.now();
 
@@ -456,11 +513,13 @@ async function send(text, file) {
     paintBars();
 
     addBotActions(wrap, () => answer);
+    announce(truncated ? 'Jawaban selesai tapi terpotong.' : `Jawaban selesai. ${answer}`);
   } catch (err) {
     wrap.classList.add('error');
     bubble.setAttribute('role', 'alert');
     bubble.textContent = err.message || 'Gagal menghubungi server.';
     conversation.pop();
+    announce('Gagal mendapat jawaban.');
   } finally {
     setBusy(false);
     paintStats();
@@ -520,8 +579,8 @@ $('file-input').addEventListener('change', () => {
   const file = $('file-input').files[0];
   if (!file) return;
 
-  if (file.size > 20 * 1024 * 1024) {
-    toast('Ukuran berkas melebihi 20 MB');
+  if (file.size > maxFileMB * 1024 * 1024) {
+    toast(`Ukuran berkas melebihi ${maxFileMB} MB`);
     $('file-input').value = '';
     return;
   }
@@ -580,10 +639,9 @@ function setMode(mode) {
   mmMode = mode;
   const cfg = MODES[mode];
 
+  markRadios($('mm-tabs'), (b) => b.dataset.mode === mode);
   document.querySelectorAll('#mm-tabs button').forEach((b) => {
-    const on = b.dataset.mode === mode;
-    b.classList.toggle('is-active', on);
-    b.setAttribute('aria-selected', String(on));
+    b.classList.toggle('is-active', b.dataset.mode === mode);
   });
 
   $('mm-endpoint').textContent = `POST ${cfg.path}`;
@@ -671,6 +729,8 @@ async function loadConfig() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const config = await res.json();
+    if (Number.isFinite(config.maxFileSizeMB)) maxFileMB = config.maxFileSizeMB;
+
     const seg = $('style-seg');
     const about = $('about-styles');
 
@@ -722,8 +782,11 @@ async function loadHealth() {
   }
 }
 
+wireRadioKeys($('mm-tabs'), (btn) => setMode(btn.dataset.mode));
+wireRadioKeys($('style-seg'), (btn) => selectStyle(btn.dataset.style));
+
 setMode('text');
 paintStats();
+syncDrawerState();
 loadConfig();
 loadHealth();
-input.focus();

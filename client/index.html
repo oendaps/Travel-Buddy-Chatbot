@@ -36,14 +36,14 @@
 </svg>
 
 <button class="drawer-toggle" id="drawer-toggle" aria-label="Buka menu" aria-expanded="false">
-  <svg class="ico"><use href="#i-menu"/></svg>
+  <svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>
 </button>
 
 <div class="shell">
 
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <span class="brand-mark"><svg class="ico"><use href="#i-compass"/></svg></span>
+      <span class="brand-mark"><svg class="ico" aria-hidden="true"><use href="#i-compass"/></svg></span>
       <span class="brand-name">TRAVEL BUDDY</span>
     </div>
 
@@ -75,19 +75,19 @@
 
     <nav class="nav" aria-label="Navigasi utama">
       <button type="button" class="nav-item is-active" data-panel="chat" aria-current="page">
-        <svg class="ico"><use href="#i-chat"/></svg><span>Percakapan</span>
+        <svg class="ico" aria-hidden="true"><use href="#i-chat"/></svg><span>Percakapan</span>
       </button>
       <button type="button" class="nav-item" data-panel="multimodal">
-        <svg class="ico"><use href="#i-layers"/></svg><span>Uji Multimodal</span>
+        <svg class="ico" aria-hidden="true"><use href="#i-layers"/></svg><span>Uji Multimodal</span>
       </button>
       <button type="button" class="nav-item" data-panel="about">
-        <svg class="ico"><use href="#i-info"/></svg><span>Tentang</span>
+        <svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><span>Tentang</span>
       </button>
     </nav>
 
     <div class="sidebar-foot">
-      <button type="button" class="ghost-btn" id="theme-toggle" aria-label="Ganti tema">
-        <svg class="ico" id="theme-icon"><use href="#i-sun"/></svg><span id="theme-label">Terang</span>
+      <button type="button" class="ghost-btn" id="theme-toggle">
+        <svg class="ico" id="theme-icon" aria-hidden="true"><use href="#i-sun"/></svg><span id="theme-label">Terang</span>
       </button>
       <p class="model-chip"><span class="dot" id="health-dot"></span><span id="model-name">menghubungkan…</span></p>
     </div>
@@ -97,7 +97,11 @@
 
     <!-- Percakapan -->
     <section class="panel is-active" data-panel="chat" aria-label="Percakapan">
-      <div class="chat-scroll" id="chat-box" role="log" aria-live="polite" aria-relevant="additions text">
+      <!-- aria-live sengaja off: isinya ditulis ulang tiap token waktu streaming,
+           jadi pembaca layar akan mengulang seluruh jawaban berkali-kali.
+           Statusnya diumumkan lewat #sr-status di bawah. -->
+      <div class="chat-scroll" id="chat-box" role="log" aria-live="off"
+           tabindex="0" aria-label="Riwayat percakapan">
 
         <div class="hero" id="hero">
           <div class="hero-art" aria-hidden="true">
@@ -118,23 +122,23 @@
 
       <div class="composer">
         <div class="attach-chip" id="attach-chip" hidden>
-          <svg class="ico" id="attach-icon"><use href="#i-doc"/></svg>
+          <svg class="ico" id="attach-icon" aria-hidden="true"><use href="#i-doc"/></svg>
           <span id="attach-name"></span>
           <button type="button" id="attach-remove" aria-label="Hapus lampiran">
-            <svg class="ico"><use href="#i-close"/></svg>
+            <svg class="ico" aria-hidden="true"><use href="#i-close"/></svg>
           </button>
         </div>
 
         <form id="chat-form" autocomplete="off">
           <label class="attach-btn" for="file-input" title="Lampirkan gambar, dokumen, atau audio">
-            <svg class="ico"><use href="#i-clip"/></svg>
+            <svg class="ico" aria-hidden="true"><use href="#i-clip"/></svg>
             <span class="sr-only">Lampirkan berkas</span>
-            <input type="file" id="file-input" accept="image/*,audio/*,.pdf,.txt,.md,.csv" hidden>
+            <input class="sr-only" type="file" id="file-input" accept="image/*,audio/*,.pdf,.txt,.md,.csv">
           </label>
           <label class="sr-only" for="user-input">Tulis pesan untuk Travel Buddy</label>
           <textarea id="user-input" rows="1" placeholder="Mau ke mana kali ini?"></textarea>
           <button type="submit" id="send-btn" aria-label="Kirim pesan">
-            <svg class="ico"><use href="#i-send"/></svg>
+            <svg class="ico" aria-hidden="true"><use href="#i-send"/></svg>
           </button>
         </form>
 
@@ -151,18 +155,18 @@
         <p>Empat endpoint bawaan diuji satu per satu, terpisah dari percakapan.</p>
       </div>
 
-      <div class="mm-tabs" id="mm-tabs" role="tablist">
-        <button type="button" role="tab" class="is-active" data-mode="text" aria-selected="true">
-          <svg class="ico"><use href="#i-text"/></svg>Teks
+      <div class="mm-tabs" id="mm-tabs" role="radiogroup" aria-label="Jenis input">
+        <button type="button" role="radio" class="is-active" data-mode="text" aria-checked="true">
+          <svg class="ico" aria-hidden="true"><use href="#i-text"/></svg>Teks
         </button>
-        <button type="button" role="tab" data-mode="image" aria-selected="false">
-          <svg class="ico"><use href="#i-image"/></svg>Gambar
+        <button type="button" role="radio" data-mode="image" aria-checked="false">
+          <svg class="ico" aria-hidden="true"><use href="#i-image"/></svg>Gambar
         </button>
-        <button type="button" role="tab" data-mode="document" aria-selected="false">
-          <svg class="ico"><use href="#i-doc"/></svg>Dokumen
+        <button type="button" role="radio" data-mode="document" aria-checked="false">
+          <svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg>Dokumen
         </button>
-        <button type="button" role="tab" data-mode="audio" aria-selected="false">
-          <svg class="ico"><use href="#i-audio"/></svg>Audio
+        <button type="button" role="radio" data-mode="audio" aria-checked="false">
+          <svg class="ico" aria-hidden="true"><use href="#i-audio"/></svg>Audio
         </button>
       </div>
 
@@ -252,7 +256,7 @@
     </section>
 
     <section class="card">
-      <h3 class="card-title"><svg class="ico"><use href="#i-sliders"/></svg>Parameter</h3>
+      <h3 class="card-title"><svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg>Parameter</h3>
 
       <div class="slider">
         <label for="temperature">Temperature <output id="temperature-value">0.9</output></label>
@@ -268,7 +272,7 @@
       </div>
 
       <button type="button" class="ghost-btn wide" id="reset-params">
-        <svg class="ico"><use href="#i-refresh"/></svg>Kembalikan preset
+        <svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Kembalikan preset
       </button>
     </section>
 
@@ -288,7 +292,7 @@
         <li><span>Karakter dibalas</span><strong id="kv-chars">0</strong></li>
       </ul>
       <button type="button" class="ghost-btn wide" id="reset-chat">
-        <svg class="ico"><use href="#i-plus"/></svg>Percakapan baru
+        <svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Percakapan baru
       </button>
     </section>
 
@@ -296,6 +300,7 @@
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<p class="sr-only" id="sr-status" role="status" aria-live="polite"></p>
 
 <script src="script.js"></script>
 </body>
