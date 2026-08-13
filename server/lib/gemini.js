@@ -8,10 +8,10 @@ const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 export const MODEL_CANDIDATES = [
   PRIMARY_MODEL,
   'gemini-2.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
   'gemini-flash-latest',
   'gemini-flash-lite-latest',
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-pro',
 ].filter((model, i, all) => all.indexOf(model) === i);
 
 let activeModel = PRIMARY_MODEL;

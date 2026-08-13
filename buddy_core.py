@@ -90,10 +90,10 @@ GAYA_DEFAULT = "santai"
 
 MODEL_KANDIDAT = [
     "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
     "gemini-flash-latest",
     "gemini-flash-lite-latest",
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
 ]
 
 MAX_RIWAYAT = 20
