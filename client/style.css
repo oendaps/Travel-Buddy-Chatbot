@@ -675,8 +675,10 @@ code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-si
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 1px;
+  gap: 3px;
 }
+
+.gauge-num { display: flex; align-items: baseline; gap: 2px; }
 
 .gauge-center strong {
   font-size: 31px; font-weight: 700;
@@ -685,9 +687,7 @@ code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-si
 }
 
 .gauge-center span {
-  position: absolute;
-  top: 50%; margin-left: 52px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint);
 }
 
@@ -980,16 +980,20 @@ code { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-si
 
 /* drawer (mobile) */
 
+/* Isi chat lewat di bawah tombol ini waktu di-scroll, jadi latarnya diburamkan
+   supaya teks di belakangnya tidak bertabrakan. */
 .drawer-toggle {
   display: none;
   position: fixed;
   top: 14px; left: 14px;
-  width: 42px; height: 42px;
+  width: 44px; height: 44px;
   place-items: center;
   color: var(--text);
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) 84%, transparent);
   border: 1px solid var(--line);
   border-radius: 13px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .3);
   cursor: pointer;
   z-index: 50;
 }
